@@ -28,3 +28,11 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Build artifacts
+*.whl
+*.tar.gz
+PyAudio-*/
+portaudio/
+vcpkg/
+test.wav

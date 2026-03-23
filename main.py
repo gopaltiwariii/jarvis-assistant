@@ -6,16 +6,9 @@ def run_jarvis():
     speak("Initializing Jarvis systems.")
     speak("All systems are online. How can I help you today?")
     
-    # Normally we would use 'listen()' but due to a pyaudio 
-    # installation issue on Python 3.14 we will use text input 
-    # for the core testing, as we are still building the brain.
-    # We can fix the audio input later!
-    
     while True:
         try:
-            # We'll use input() for now until pyAudio is fixed for Win/Python 3.14
-            # query = listen()
-            query = input("\nType a command (or type 'exit' to quit): ").lower()
+            query = listen()
             
             if query == "none" or query == "":
                 continue

@@ -1,33 +1,52 @@
-import pyttsx3
+import subprocess
 import speech_recognition as sr
 
-def initialize_engine():
-    """Initializes the text-to-speech engine."""
-    engine = pyttsx3.init('sapi5')
-    voices = engine.getProperty('voices')
-    engine.setProperty('voice', voices[0].id) # Index 0 for male, 1 for female usually
-    return engine
-
-engine = initialize_engine()
+import sounddevice as sd
+import scipy.io.wavfile as wav
+import tempfile
+import os
 
 def speak(text):
     """Speaks the given text out loud."""
     print(f"Jarvis: {text}")
-    engine.say(text)
-    engine.runAndWait()
+    
+    # Escape single quotes for PowerShell command
+    safe_text = text.replace("'", "''")
+    # Using PowerShell's built in Speech module (native to Windows, requires no pip install)
+    ps_script = f"Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('{safe_text}')"
+    cmd = ["powershell", "-Command", ps_script]
+    
+    # Run synchronously. CREATE_NO_WINDOW prevents flashing cmd boxes if launched outside of a console
+    creationflags = getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000) if os.name == 'nt' else 0
+    subprocess.run(cmd, creationflags=creationflags)
 
 def listen():
     """Listens to the microphone and returns the recognized text."""
     recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        print("Listening...")
-        recognizer.pause_threshold = 1
-        recognizer.adjust_for_ambient_noise(source)
-        try:
-            audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
-        except sr.WaitTimeoutError:
-            print("Listening timed out.")
-            return "None"
+    fs = 44100
+    duration = 5  # seconds
+    
+    print("Listening... (Speak for up to 5 seconds)")
+    try:
+        myrecording = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype='int16')
+        sd.wait()
+        
+        # Save as temp file
+        temp_dir = tempfile.gettempdir()
+        temp_path = os.path.join(temp_dir, "jarvis_temp_audio.wav")
+        wav.write(temp_path, fs, myrecording)
+        
+        with sr.AudioFile(temp_path) as source:
+            # We skip ambient noise adjustment here as it might clip short recordings
+            audio = recognizer.record(source)
+            
+        # Clean up
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+            
+    except Exception as e:
+        print(f"Audio recording error: {e}")
+        return "None"
 
     try:
         print("Recognizing...")
